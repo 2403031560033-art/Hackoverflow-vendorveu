@@ -42,7 +42,7 @@ export default function CustomerSupport() {
 
   const fetchMessages = async (id = customerId) => {
     if (!id) return;
-    
+
     setLoading(true);
     try {
       const response = await getMySupportMessages('customer', customerPhone);
@@ -111,11 +111,10 @@ export default function CustomerSupport() {
                     className={`flex ${isAdmin ? 'justify-start' : 'justify-end'}`}
                   >
                     <div
-                      className={`max-w-xs md:max-w-md px-4 py-2 rounded-lg ${
-                        isAdmin
+                      className={`max-w-xs md:max-w-md px-4 py-2 rounded-lg ${isAdmin
                           ? 'bg-blue-50 text-gray-900 border border-blue-200'
                           : 'bg-orange-600 text-white'
-                      }`}
+                        }`}
                     >
                       {isAdmin && (
                         <p className="text-xs font-semibold mb-1 text-blue-800">Admin</p>
