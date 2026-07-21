@@ -78,6 +78,39 @@ const vendorSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
+  },
+  // Shared Queue Management fields
+  onlineOrderingPaused: {
+    type: Boolean,
+    default: false
+  },
+  isBusy: {
+    type: Boolean,
+    default: false
+  },
+  walkInCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  avgPrepTimeMinutes: {
+    type: Number,
+    default: 10,
+    min: 1
+  },
+  // Web3 Verification fields
+  blockchainId: {
+    type: String,
+    default: null
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['unverified', 'pending', 'verified'],
+    default: 'unverified'
+  },
+  verifiedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

@@ -9,6 +9,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import web3Routes from './routes/web3Routes.js';
 
 dotenv.config();
 
@@ -56,6 +58,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/web3', web3Routes);
 
 // Root route
 app.get('/', (req, res) => {

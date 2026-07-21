@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import { getVendorById, updateVendorLocation, updateVendorProfile, uploadVendorImage, uploadVendorQRCode, getImageUrl } from '../../utils/api';
+import { getVendorById, updateVendorLocation, updateVendorProfile, uploadVendorImage, uploadVendorQRCode, getImageUrl, registerVendorBlockchain } from '../../utils/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -43,6 +43,7 @@ export default function VendorSettings() {
   const [imagePreview, setImagePreview] = useState(null);
   const [qrCodePreview, setQrCodePreview] = useState(null);
   const [uploadingQR, setUploadingQR] = useState(false);
+  const [registeringBlockchain, setRegisteringBlockchain] = useState(false);
 
   useEffect(() => {
     if (!vendorId) {
@@ -264,6 +265,21 @@ export default function VendorSettings() {
     } finally {
       setUploadingQR(false);
       e.target.value = ''; // Reset file input
+    }
+  };
+
+  const handleBlockchainRegister = async () => {
+    setRegisteringBlockchain(true);
+    try {
+      await registerVendorBlockchain(vendorId);
+      await fetchVendor();
+      setMessage('Blockchain identity registered successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Error registering blockchain:', error);
+      alert(error.response?.data?.error || 'Failed to register blockchain identity.');
+    } finally {
+      setRegisteringBlockchain(false);
     }
   };
 
@@ -518,6 +534,66 @@ export default function VendorSettings() {
             <div className="mt-4 p-3 bg-green-50 rounded-lg">
               <p className="text-sm text-green-800">{message}</p>
             </div>
+          )}
+        </div>
+
+        {/* Blockchain Verification Section */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">🔗 Blockchain Verification</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Register your vendor identity on the blockchain for transparent and tamper-proof verification.
+            Verified vendors receive a trusted badge visible to customers.
+          </p>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-700 font-medium">Verification Status</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {vendor?.verificationStatus === 'verified' ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      ✅ Verified
+                    </span>
+                  ) : vendor?.verificationStatus === 'pending' ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                      ⏳ Pending Verification
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                      ⚪ Unverified
+                    </span>
+                  )}
+                </div>
+              </div>
+              {vendor?.verificationStatus === 'verified' && vendor?.verifiedAt && (
+                <p className="text-xs text-gray-500">
+                  Verified on {new Date(vendor.verifiedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {vendor?.blockchainId && (
+            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+              <p className="text-xs text-gray-500 mb-1">Blockchain ID</p>
+              <p className="text-xs font-mono text-gray-700 break-all select-all">{vendor.blockchainId}</p>
+            </div>
+          )}
+
+          {!vendor?.blockchainId && (
+            <button
+              onClick={handleBlockchainRegister}
+              disabled={registeringBlockchain}
+              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {registeringBlockchain ? 'Registering...' : '🔗 Register on Blockchain'}
+            </button>
+          )}
+
+          {vendor?.verificationStatus === 'pending' && (
+            <p className="text-sm text-yellow-700 mt-3 bg-yellow-50 p-3 rounded-lg">
+              📩 Your blockchain identity has been submitted. An admin will verify your identity shortly.
+            </p>
           )}
         </div>
 

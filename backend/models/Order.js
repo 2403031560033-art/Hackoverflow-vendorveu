@@ -34,13 +34,14 @@ const orderSchema = new mongoose.Schema({
   },
   customerName: {
     type: String,
-    required: true,
+    required: function() { return this.orderSource !== 'walkin'; },
     trim: true
   },
   customerPhone: {
     type: String,
-    required: true,
-    match: /^[0-9]{10}$/
+    required: function() { return this.orderSource !== 'walkin'; },
+    match: /^[0-9]{10}$/,
+    default: null
   },
   items: [orderItemSchema],
   total: {
@@ -65,8 +66,9 @@ const orderSchema = new mongoose.Schema({
   },
   otp: {
     type: String,
-    required: true,
-    match: /^[0-9]{4}$/
+    required: function() { return this.orderSource !== 'walkin'; },
+    match: /^[0-9]{4}$/,
+    default: null
   },
   status: {
     type: String,
@@ -89,6 +91,36 @@ const orderSchema = new mongoose.Schema({
   ratingComment: {
     type: String,
     default: ''
+  },
+  // Shared Queue fields
+  orderSource: {
+    type: String,
+    enum: ['online', 'walkin'],
+    default: 'online'
+  },
+  estimatedPickupTime: {
+    type: Date,
+    default: null
+  },
+  // QR Token Pickup fields
+  pickupToken: {
+    type: String,
+    unique: true,
+    sparse: true,
+    default: null
+  },
+  pickupTokenUsed: {
+    type: Boolean,
+    default: false
+  },
+  pickupTokenExpiresAt: {
+    type: Date,
+    default: null
+  },
+  // Web3 Receipt Integrity
+  receiptHash: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

@@ -11,7 +11,11 @@ import {
   updateVendorProfile,
   updateVendorWaitingTime,
   uploadVendorImage,
-  uploadVendorQRCode
+  uploadVendorQRCode,
+  toggleBusyStatus,
+  updateOnlineOrderingStatus,
+  updateWalkInCount,
+  getEstimatedPickupTime
 } from '../controllers/vendorController.js';
 import { uploadVendor } from '../middleware/upload.js';
 
@@ -29,6 +33,10 @@ router.patch('/:id/profile', updateVendorProfile);
 router.patch('/:id/waiting-time', updateVendorWaitingTime);
 router.post('/:id/image', uploadVendor.single('image'), uploadVendorImage);
 router.post('/:id/qrcode', uploadVendor.single('image'), uploadVendorQRCode);
+router.patch('/:id/busy', toggleBusyStatus);
+router.patch('/:id/online-ordering', updateOnlineOrderingStatus);
+router.patch('/:id/walkin-count', updateWalkInCount);
+router.get('/:id/estimated-pickup', getEstimatedPickupTime);
 
 export default router;
 

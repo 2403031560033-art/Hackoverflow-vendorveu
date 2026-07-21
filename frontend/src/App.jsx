@@ -16,6 +16,7 @@ import VendorSettings from './pages/vendor/VendorSettings';
 import VendorSupport from './pages/vendor/VendorSupport';
 import MenuManagement from './pages/vendor/MenuManagement';
 import OrderManagement from './pages/vendor/OrderManagement';
+import VendorAnalytics from './pages/vendor/VendorAnalytics';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
@@ -40,6 +41,7 @@ function App() {
         <Route path="/vendor/support" element={<VendorSupport />} />
         <Route path="/vendor/menu" element={<MenuManagement />} />
         <Route path="/vendor/orders" element={<OrderManagement />} />
+        <Route path="/vendor/analytics" element={<VendorAnalytics />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>

@@ -36,6 +36,10 @@ export default function VendorMenu() {
 
   const handleAddToCart = (item) => {
     if (!item.inStock) return;
+    if (vendor?.onlineOrderingPaused) {
+      alert('This vendor is not accepting online orders right now. Please try again later.');
+      return;
+    }
 
     const result = addToCart(item, id);
     if (result.error) {
@@ -130,6 +134,19 @@ export default function VendorMenu() {
           </div>
         </div>
 
+        {/* Online Ordering Paused Banner */}
+        {vendor.onlineOrderingPaused && (
+          <div className="bg-orange-100 border-2 border-orange-300 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <p className="text-orange-900 font-semibold">Online Ordering Paused</p>
+                <p className="text-orange-800 text-sm">This vendor is not accepting online orders right now. Please check back later.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Category Filter */}
         <div className="bg-white p-4 rounded-lg shadow mb-6">
           <div className="flex gap-2 flex-wrap">
@@ -184,8 +201,8 @@ export default function VendorMenu() {
                   </div>
                   <button
                     onClick={() => handleAddToCart(item)}
-                    disabled={!item.inStock}
-                    className={`px-4 py-2 rounded-lg font-medium ${item.inStock
+                    disabled={!item.inStock || vendor?.onlineOrderingPaused}
+                    className={`px-4 py-2 rounded-lg font-medium ${item.inStock && !vendor?.onlineOrderingPaused
                         ? 'bg-orange-600 text-white hover:bg-orange-700'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}

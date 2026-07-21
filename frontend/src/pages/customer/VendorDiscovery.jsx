@@ -383,8 +383,19 @@ export default function VendorDiscovery() {
                   >
                     <Popup>
                       <div className="min-w-[200px]">
-                        <h3 className="font-semibold text-gray-900">{vendor.name}</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          {vendor.name}
+                          {vendor.verificationStatus === 'verified' && (
+                            <span className="text-green-600 text-sm ml-1" title="Blockchain Verified">✓</span>
+                          )}
+                        </h3>
                         <p className="text-sm text-gray-600 capitalize">{vendor.serviceType || 'food'} • {vendor.category}</p>
+                        {vendor.isBusy && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-800 inline-block mt-1">Busy</span>
+                        )}
+                        {vendor.onlineOrderingPaused && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-800 inline-block mt-1">Not accepting orders</span>
+                        )}
                         {vendor.distance !== null && vendor.distance !== undefined && (
                           <p className="text-sm text-gray-500 mt-1">
                             {vendor.distance.toFixed(2)} km away
@@ -453,11 +464,27 @@ export default function VendorDiscovery() {
                 </div>
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900">{vendor.name}</h3>
-                    <span className={`px-2 py-1 rounded text-xs ${vendor.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                      {vendor.isOpen ? 'Open' : 'Closed'}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <h3 className="text-xl font-semibold text-gray-900">{vendor.name}</h3>
+                      {vendor.verificationStatus === 'verified' && (
+                        <span className="text-green-600 text-sm" title="Blockchain Verified">✓</span>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      <span className={`px-2 py-1 rounded text-xs ${vendor.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {vendor.isOpen ? 'Open' : 'Closed'}
+                      </span>
+                      {vendor.isBusy && (
+                        <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-800">
+                          Busy
+                        </span>
+                      )}
+                      {vendor.onlineOrderingPaused && (
+                        <span className="px-2 py-1 rounded text-xs bg-orange-100 text-orange-800">
+                          Not accepting orders
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-gray-600 text-sm mb-2 capitalize">
                     <span className="inline-block px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs font-medium mr-1">

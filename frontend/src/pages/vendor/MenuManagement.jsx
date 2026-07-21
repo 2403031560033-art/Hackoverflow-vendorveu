@@ -6,6 +6,7 @@ export default function MenuManagement() {
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [quickStockMode, setQuickStockMode] = useState(false);
   const vendorServiceType = localStorage.getItem('vendorServiceType') || 'food';
 
   const CATEGORY_OPTIONS = {
@@ -174,14 +175,29 @@ export default function MenuManagement() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <h2 className="text-2xl font-bold text-gray-900">Menu Items</h2>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-orange-700"
-          >
-            {showAddForm ? 'Cancel' : '+ Add Menu Item'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setQuickStockMode(!quickStockMode)}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                quickStockMode 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-white text-blue-600 border border-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              {quickStockMode ? 'Exit Quick Stock' : '⚡ Quick Stock Mode'}
+            </button>
+            <button
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                if (quickStockMode) setQuickStockMode(false);
+              }}
+              className="bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-orange-700"
+            >
+              {showAddForm ? 'Cancel' : '+ Add Menu Item'}
+            </button>
+          </div>
         </div>
 
         {/* Add Item Form */}
@@ -312,73 +328,131 @@ export default function MenuManagement() {
           </div>
         )}
 
-        {/* Menu Items Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {menuItems.map(item => (
-            <div key={item._id} className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="h-48 bg-gray-200 flex items-center justify-center relative group">
-                {(imagePreviews[item._id] || (item.image && item.image !== '/images/menu-placeholder.jpg')) ? (
-                  <img
-                    src={imagePreviews[item._id] || getImageUrl(item.image) || item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-gray-400 text-4xl">🍽️</span>
-                )}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleItemImageUpload(item._id, e)}
-                    disabled={uploadingImages[item._id]}
-                    className="hidden"
-                    id={`item-image-${item._id}`}
-                  />
-                  <label
-                    htmlFor={`item-image-${item._id}`}
-                    className={`px-4 py-2 bg-white text-gray-900 rounded-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity ${uploadingImages[item._id] ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {uploadingImages[item._id] ? 'Uploading...' : '📷 Upload Photo'}
-                  </label>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                  <span className={`px-2 py-1 rounded text-xs ${item.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                    {item.inStock ? 'In Stock' : 'Out of Stock'}
-                  </span>
-                </div>
-                {item.description && (
-                  <p className="text-gray-600 text-sm mb-2">{item.description}</p>
-                )}
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-xl font-bold text-orange-600">₹{item.price}</p>
-                  <p className="text-gray-500 text-sm">~{item.preparationTime} min</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleToggleStock(item._id)}
-                    className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm ${item.inStock
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      }`}
-                  >
-                    {item.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item._id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+        {/* Quick Stock Mode View */}
+        {quickStockMode ? (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="p-4 bg-blue-50 border-b border-blue-100">
+              <p className="text-sm text-blue-800 font-medium">
+                ⚡ Quick Stock Mode: Tap switches to quickly mark items as in or out of stock.
+              </p>
             </div>
-          ))}
-        </div>
+            <ul className="divide-y divide-gray-200">
+              {menuItems.map(item => (
+                <li key={item._id} className={`p-4 flex items-center justify-between ${!item.inStock ? 'bg-gray-50' : ''}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded bg-gray-200 overflow-hidden flex-shrink-0">
+                      {(imagePreviews[item._id] || (item.image && item.image !== '/images/menu-placeholder.jpg')) ? (
+                        <img
+                          src={imagePreviews[item._id] || getImageUrl(item.image) || item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${!item.inStock ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                        {item.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 capitalize">{item.category} • ₹{item.price}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Custom Toggle Switch */}
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${item.inStock ? 'text-green-600' : 'text-red-500'}`}>
+                      {item.inStock ? 'In Stock' : 'Out of Stock'}
+                    </span>
+                    <button
+                      onClick={() => handleToggleStock(item._id)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-offset-2 ${
+                        item.inStock ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                      role="switch"
+                      aria-checked={item.inStock}
+                    >
+                      <span className="sr-only">Toggle stock</span>
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          item.inStock ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {menuItems.map(item => (
+              <div key={item._id} className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="h-48 bg-gray-200 flex items-center justify-center relative group">
+                  {(imagePreviews[item._id] || (item.image && item.image !== '/images/menu-placeholder.jpg')) ? (
+                    <img
+                      src={imagePreviews[item._id] || getImageUrl(item.image) || item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-gray-400 text-4xl">🍽️</span>
+                  )}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleItemImageUpload(item._id, e)}
+                      disabled={uploadingImages[item._id]}
+                      className="hidden"
+                      id={`item-image-${item._id}`}
+                    />
+                    <label
+                      htmlFor={`item-image-${item._id}`}
+                      className={`px-4 py-2 bg-white text-gray-900 rounded-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity ${uploadingImages[item._id] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {uploadingImages[item._id] ? 'Uploading...' : '📷 Upload Photo'}
+                    </label>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
+                    <span className={`px-2 py-1 rounded text-xs ${item.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                      {item.inStock ? 'In Stock' : 'Out of Stock'}
+                    </span>
+                  </div>
+                  {item.description && (
+                    <p className="text-gray-600 text-sm mb-2">{item.description}</p>
+                  )}
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-xl font-bold text-orange-600">₹{item.price}</p>
+                    <p className="text-gray-500 text-sm">~{item.preparationTime} min</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleToggleStock(item._id)}
+                      className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm ${item.inStock
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                    >
+                      {item.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item._id)}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {menuItems.length === 0 && (
           <div className="text-center py-12 bg-white rounded-lg shadow">

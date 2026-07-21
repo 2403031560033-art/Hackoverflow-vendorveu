@@ -92,13 +92,44 @@ export default function OrderStatus() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Order Number & OTP */}
+        {/* Order Number & Pickup Token */}
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-lg p-8 text-white mb-6">
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-2">Order #{order.orderNumber}</h2>
-            <p className="text-orange-100 mb-4">Your OTP for pickup:</p>
-            <div className="text-6xl font-bold mb-2">{order.otp}</div>
-            <p className="text-sm text-orange-100">Show this OTP to the vendor</p>
+            {order.pickupToken ? (
+              <>
+                <p className="text-orange-100 mb-3">Your Pickup QR Token:</p>
+                {/* QR Token Display */}
+                <div className="bg-white rounded-lg p-4 mx-auto max-w-xs mb-3">
+                  <div className="bg-gray-100 rounded p-3 break-all">
+                    <p className="text-gray-900 font-mono text-xs leading-relaxed select-all">
+                      {order.pickupToken}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(order.pickupToken);
+                      alert('Pickup token copied!');
+                    }}
+                    className="mt-2 w-full bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
+                  >
+                    📋 Copy Token
+                  </button>
+                </div>
+                <p className="text-sm text-orange-100">Show this token to the vendor for pickup</p>
+                {order.otp && (
+                  <p className="text-xs text-orange-200 mt-2">
+                    Fallback OTP: <span className="font-mono font-bold text-base">{order.otp}</span>
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-orange-100 mb-4">Your OTP for pickup:</p>
+                <div className="text-6xl font-bold mb-2">{order.otp}</div>
+                <p className="text-sm text-orange-100">Show this OTP to the vendor</p>
+              </>
+            )}
           </div>
         </div>
 
@@ -195,12 +226,23 @@ export default function OrderStatus() {
           )}
         </div>
 
-        {/* Estimated Time */}
+        {/* Estimated Pickup Time */}
         {order.status !== 'completed' && (
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
-            <p className="text-sm text-blue-800">
-              Estimated preparation time: ~{order.estimatedTime} minutes
-            </p>
+            {order.estimatedPickupTime ? (
+              <>
+                <p className="text-sm text-blue-800 font-medium">
+                  🕐 Estimated pickup: around {new Date(order.estimatedPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(new Date(order.estimatedPickupTime).getTime() + 5 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  This is an estimate based on current queue size (online + walk-in orders)
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-blue-800">
+                Estimated preparation time: ~{order.estimatedTime} minutes
+              </p>
+            )}
           </div>
         )}
 

@@ -159,5 +159,22 @@ export const getGoogleMapsDirectionsUrl = (lat, lng, address) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 };
 
-export default api;
+// Queue Management APIs
+export const toggleVendorBusy = (id) => api.patch(`/vendors/${id}/busy`);
+export const updateOnlineOrdering = (id, paused) => api.patch(`/vendors/${id}/online-ordering`, { paused });
+export const updateWalkInCount = (id, action) => api.patch(`/vendors/${id}/walkin-count`, { action });
+export const getEstimatedPickup = (id) => api.get(`/vendors/${id}/estimated-pickup`);
+export const createWalkInOrder = (data) => api.post('/orders/walkin', data);
 
+// QR Token Pickup API
+export const verifyPickupToken = (token) => api.post('/orders/verify-token', { token });
+
+// AI Analytics APIs
+export const getVendorAnalytics = (vendorId) => api.get(`/ai/vendor/${vendorId}/analytics`);
+export const getVendorRecommendations = (vendorId) => api.get(`/ai/vendor/${vendorId}/recommendations`);
+
+// Web3 APIs
+export const registerVendorBlockchain = (id) => api.post(`/web3/vendor/${id}/register`);
+export const getReceiptHash = (orderId) => api.get(`/web3/order/${orderId}/verify-receipt`);
+
+export default api;

@@ -1,6 +1,7 @@
 import Order from '../models/Order.js';
 import Vendor from '../models/Vendor.js';
 import Customer from '../models/Customer.js';
+import crypto from 'crypto';
 
 export const createOrder = async (req, res) => {
   try {
@@ -16,6 +17,15 @@ export const createOrder = async (req, res) => {
       notes
     } = req.body;
 
+    // Check if vendor has paused online ordering
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    if (vendor.onlineOrderingPaused) {
+      return res.status(400).json({ error: 'This vendor is not accepting online orders right now. Please try again later.' });
+    }
+
     // Validate COD payment - requires minimum ₹100 wallet balance
     if (paymentMethod === 'cash') {
       const customer = await Customer.findOne({ phone: customerPhone });
@@ -28,13 +38,26 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    // Generate 4-digit OTP
+    // Generate 4-digit OTP (kept for backward compatibility)
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Generate single-use pickup token
+    const pickupToken = crypto.randomUUID();
 
     // Calculate estimated time from items
     const estimatedTime = items.reduce((max, item) => {
       return Math.max(max, item.preparationTime || 10);
     }, 10);
+
+    // Calculate estimated pickup time based on shared queue
+    const activeOrders = await Order.countDocuments({
+      vendorId,
+      status: { $in: ['pending', 'preparing'] }
+    });
+    const totalQueueSize = activeOrders + (vendor.walkInCount || 0);
+    const avgPrepTime = vendor.avgPrepTimeMinutes || 10;
+    const estimatedMinutes = totalQueueSize * avgPrepTime;
+    const estimatedPickupTime = new Date(Date.now() + estimatedMinutes * 60000);
 
     const order = new Order({
       vendorId,
@@ -46,7 +69,10 @@ export const createOrder = async (req, res) => {
       walletAmount: walletAmount || 0,
       cashAmount: cashAmount || 0,
       otp,
+      pickupToken,
       estimatedTime,
+      estimatedPickupTime,
+      orderSource: 'online',
       notes: notes || '',
       status: 'pending'
     });
@@ -86,7 +112,9 @@ export const createOrder = async (req, res) => {
       orderId: order._id,
       orderNumber: order.orderNumber,
       otp: order.otp,
+      pickupToken: order.pickupToken,
       estimatedTime: order.estimatedTime,
+      estimatedPickupTime: order.estimatedPickupTime,
       status: order.status
     });
   } catch (error) {
@@ -188,6 +216,11 @@ export const updateOrderStatus = async (req, res) => {
       }
       updateData.estimatedTime = estimatedTime;
     }
+
+    // When marking as 'ready', set QR token expiry (2 hours from now)
+    if (status === 'ready') {
+      updateData.pickupTokenExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    }
     
     const order = await Order.findByIdAndUpdate(
       req.params.id,
@@ -226,6 +259,96 @@ export const verifyOTP = async (req, res) => {
     await order.save();
 
     res.json({ message: 'OTP verified successfully', order });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Verify single-use QR pickup token
+export const verifyPickupToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Pickup token is required' });
+    }
+
+    const order = await Order.findOne({ pickupToken: token });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Invalid pickup token. Order not found.' });
+    }
+
+    if (order.pickupTokenUsed) {
+      return res.status(400).json({ error: 'This pickup token has already been used. Order was already collected.' });
+    }
+
+    if (order.status !== 'ready') {
+      return res.status(400).json({ error: `Order is not ready for pickup. Current status: ${order.status}` });
+    }
+
+    if (order.pickupTokenExpiresAt && new Date() > order.pickupTokenExpiresAt) {
+      return res.status(400).json({ error: 'Pickup token has expired. Please contact the vendor.' });
+    }
+
+    // Mark token as used and complete the order
+    order.pickupTokenUsed = true;
+    order.status = 'completed';
+    await order.save();
+
+    res.json({
+      message: 'Pickup verified successfully! Order completed.',
+      order: {
+        _id: order._id,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        total: order.total,
+        status: order.status
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Create a walk-in order (vendor-side, minimal data)
+export const createWalkInOrder = async (req, res) => {
+  try {
+    const { vendorId, items, total, notes } = req.body;
+
+    if (!vendorId || !total) {
+      return res.status(400).json({ error: 'vendorId and total are required' });
+    }
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    const order = new Order({
+      vendorId,
+      customerName: 'Walk-in Customer',
+      items: items || [],
+      total,
+      paymentMethod: 'cash',
+      orderSource: 'walkin',
+      notes: notes || '',
+      status: 'preparing'
+    });
+
+    await order.save();
+
+    // Increment vendor walk-in count
+    vendor.walkInCount = (vendor.walkInCount || 0) + 1;
+    vendor.totalOrders += 1;
+    await vendor.save();
+
+    res.status(201).json({
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      orderSource: 'walkin'
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

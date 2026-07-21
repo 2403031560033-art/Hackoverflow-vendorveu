@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getVendorOrders, updateOrderStatus, verifyOTP } from '../../utils/api';
+import { getVendorOrders, updateOrderStatus, verifyOTP, verifyPickupToken } from '../../utils/api';
 
 export default function OrderManagement() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function OrderManagement() {
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [orderForTimeModal, setOrderForTimeModal] = useState(null);
   const [estimatedTimeInput, setEstimatedTimeInput] = useState('');
+  const [tokenInput, setTokenInput] = useState('');
   const vendorId = localStorage.getItem('vendorId');
 
   useEffect(() => {
@@ -119,6 +120,26 @@ export default function OrderManagement() {
     }
   };
 
+  const handleVerifyToken = async (token) => {
+    if (!token) {
+      alert('Please enter a pickup token');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifyPickupToken(token);
+      await fetchOrders();
+      setTokenInput('');
+      alert('QR Token verified successfully! Order completed.');
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      alert(error.response?.data?.error || 'Invalid token. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
@@ -156,22 +177,46 @@ export default function OrderManagement() {
         );
       case 'ready':
         return (
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={otpInput}
-              onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="Enter OTP"
-              className="px-3 py-2 border border-gray-300 rounded-lg w-full max-w-32 text-center text-lg font-mono"
-              maxLength="4"
-            />
-            <button
-              onClick={() => handleVerifyOTP(order._id)}
-              disabled={loading || otpInput.length !== 4}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-700 disabled:bg-gray-400 w-full"
-            >
-              Verify OTP & Complete
-            </button>
+          <div className="space-y-3">
+            {/* QR Token Verification (Primary) */}
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <p className="text-xs text-green-800 font-medium mb-2">🔒 Scan QR or enter token</p>
+              <input
+                type="text"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value.trim())}
+                placeholder="Paste pickup token here"
+                className="px-3 py-2 border border-gray-300 rounded-lg w-full text-sm font-mono mb-2"
+              />
+              <button
+                onClick={() => handleVerifyToken(tokenInput)}
+                disabled={loading || !tokenInput}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 w-full text-sm"
+              >
+                ✅ Verify QR Token & Complete
+              </button>
+            </div>
+            {/* OTP Fallback */}
+            <div className="border-t pt-3">
+              <p className="text-xs text-gray-500 mb-2">Or verify with OTP:</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="OTP"
+                  className="px-3 py-2 border border-gray-300 rounded-lg w-24 text-center text-lg font-mono"
+                  maxLength="4"
+                />
+                <button
+                  onClick={() => handleVerifyOTP(order._id)}
+                  disabled={loading || otpInput.length !== 4}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-700 disabled:bg-gray-400 flex-1 text-sm"
+                >
+                  Verify OTP
+                </button>
+              </div>
+            </div>
           </div>
         );
       default:

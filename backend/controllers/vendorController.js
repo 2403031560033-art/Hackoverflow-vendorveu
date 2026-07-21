@@ -1,5 +1,6 @@
 import Vendor from '../models/Vendor.js';
 import MenuItem from '../models/MenuItem.js';
+import Order from '../models/Order.js';
 import bcrypt from 'bcryptjs';
 
 export const registerVendor = async (req, res) => {
@@ -331,3 +332,117 @@ export const uploadVendorQRCode = async (req, res) => {
   }
 };
 
+// Toggle vendor busy status
+export const toggleBusyStatus = async (req, res) => {
+  try {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    vendor.isBusy = !vendor.isBusy;
+    await vendor.save();
+
+    const vendorResponse = vendor.toObject();
+    delete vendorResponse.password;
+    res.json(vendorResponse);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Pause or resume online ordering
+export const updateOnlineOrderingStatus = async (req, res) => {
+  try {
+    const { paused } = req.body;
+    if (typeof paused !== 'boolean') {
+      return res.status(400).json({ error: 'paused must be a boolean' });
+    }
+
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    vendor.onlineOrderingPaused = paused;
+    await vendor.save();
+
+    const vendorResponse = vendor.toObject();
+    delete vendorResponse.password;
+    res.json(vendorResponse);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Increment or decrement walk-in counter
+export const updateWalkInCount = async (req, res) => {
+  try {
+    const { action } = req.body; // 'increment' or 'decrement'
+    if (!['increment', 'decrement'].includes(action)) {
+      return res.status(400).json({ error: 'action must be "increment" or "decrement"' });
+    }
+
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    if (action === 'increment') {
+      vendor.walkInCount += 1;
+    } else {
+      vendor.walkInCount = Math.max(0, vendor.walkInCount - 1);
+    }
+
+    await vendor.save();
+
+    const vendorResponse = vendor.toObject();
+    delete vendorResponse.password;
+    res.json(vendorResponse);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get estimated pickup time based on shared queue
+export const getEstimatedPickupTime = async (req, res) => {
+  try {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    // Count active online orders (pending + preparing)
+    const activeOnlineOrders = await Order.countDocuments({
+      vendorId: req.params.id,
+      status: { $in: ['pending', 'preparing'] },
+      orderSource: { $in: ['online', undefined] }
+    });
+
+    const totalQueueSize = activeOnlineOrders + vendor.walkInCount;
+    const avgPrepTime = vendor.avgPrepTimeMinutes || 10;
+    const estimatedMinutes = totalQueueSize * avgPrepTime;
+
+    // Return as a range: estimatedMinutes to estimatedMinutes + 5
+    const now = new Date();
+    const estimatedPickupStart = new Date(now.getTime() + estimatedMinutes * 60000);
+    const estimatedPickupEnd = new Date(now.getTime() + (estimatedMinutes + 5) * 60000);
+
+    res.json({
+      activeOnlineOrders,
+      walkInCount: vendor.walkInCount,
+      totalQueueSize,
+      avgPrepTimeMinutes: avgPrepTime,
+      estimatedMinutes,
+      estimatedPickupRange: {
+        start: estimatedPickupStart,
+        end: estimatedPickupEnd,
+        label: estimatedMinutes === 0
+          ? 'Ready now'
+          : `${estimatedMinutes}–${estimatedMinutes + 5} min`
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
