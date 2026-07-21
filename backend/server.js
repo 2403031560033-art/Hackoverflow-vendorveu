@@ -23,6 +23,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
+  'https://hackoverflow-vendorveu.vercel.app',
   process.env.FRONTEND_URL || 'https://vendorvue.vercel.app'
 ].filter(Boolean);
 
