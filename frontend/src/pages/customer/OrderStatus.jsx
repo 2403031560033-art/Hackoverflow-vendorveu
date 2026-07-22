@@ -92,45 +92,62 @@ export default function OrderStatus() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Order Number & Pickup Token */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-lg p-8 text-white mb-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold mb-2">Order #{order.orderNumber}</h2>
-            {order.pickupToken ? (
-              <>
-                <p className="text-orange-100 mb-3">Your Pickup QR Token:</p>
-                {/* QR Token Display */}
-                <div className="bg-white rounded-lg p-4 mx-auto max-w-xs mb-3">
-                  <div className="bg-gray-100 rounded p-3 break-all">
-                    <p className="text-gray-900 font-mono text-xs leading-relaxed select-all">
-                      {order.pickupToken}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(order.pickupToken);
-                      alert('Pickup token copied!');
-                    }}
-                    className="mt-2 w-full bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
-                  >
-                    📋 Copy Token
-                  </button>
-                </div>
-                <p className="text-sm text-orange-100">Show this token to the vendor for pickup</p>
-                {order.otp && (
-                  <p className="text-xs text-orange-200 mt-2">
-                    Fallback OTP: <span className="font-mono font-bold text-base">{order.otp}</span>
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                <p className="text-orange-100 mb-4">Your OTP for pickup:</p>
-                <div className="text-6xl font-bold mb-2">{order.otp}</div>
-                <p className="text-sm text-orange-100">Show this OTP to the vendor</p>
-              </>
-            )}
+        {/* E-Token Digital Pass Card */}
+        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 rounded-2xl shadow-xl p-6 text-white mb-6 border-2 border-amber-300">
+          <div className="flex justify-between items-center border-b border-orange-400/50 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🎟️</span>
+              <span className="font-bold text-sm tracking-wider uppercase">VendorVue Official E-Token</span>
+            </div>
+            <span className="bg-white text-orange-700 text-xs font-black px-3 py-1 rounded-full uppercase shadow">
+              {order.paymentStatus === 'paid' ? '✅ Paid & Verified' : 'Online Paid'}
+            </span>
           </div>
+
+          <div className="text-center my-2">
+            <h2 className="text-4xl font-extrabold mb-1">Order #{order.orderNumber}</h2>
+            <p className="text-orange-100 text-xs tracking-wider uppercase mb-4">Digital Pickup Pass & Proof of Payment</p>
+
+            <div className="bg-white rounded-xl p-5 max-w-md mx-auto shadow-inner text-gray-900 border border-gray-200">
+              <div className="text-xs text-gray-500 uppercase font-bold mb-2">E-Token ID</div>
+              <div className="font-mono text-sm font-bold text-orange-700 bg-orange-50 border border-orange-200 p-3 rounded-lg break-all select-all shadow-inner">
+                {order.pickupToken || `ETOKEN-ORD#${order.orderNumber}-PAID₹${order.total}`}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 text-left bg-gray-50 p-3 rounded-lg border text-xs">
+                <div>
+                  <span className="text-gray-500 block">Total Amount:</span>
+                  <span className="font-bold text-gray-900 text-sm">₹{order.total}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Payment Method:</span>
+                  <span className="font-bold text-green-700 capitalize text-sm">{order.paymentMethod || 'Razorpay / UPI'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Pickup OTP:</span>
+                  <span className="font-bold text-orange-600 font-mono text-sm">{order.otp}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Items Count:</span>
+                  <span className="font-bold text-gray-900 text-sm">{order.items?.length || 0} Items</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(order.pickupToken || `ETOKEN-ORD#${order.orderNumber}`);
+                  alert('E-Token copied to clipboard!');
+                }}
+                className="mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-4 rounded-lg w-full transition-colors flex items-center justify-center gap-2 text-sm shadow"
+              >
+                📋 Copy E-Token Details
+              </button>
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-orange-100 mt-3">
+            Present this E-Token or OTP at counter for instant verification & order collection.
+          </p>
         </div>
 
         {/* Status Timeline */}

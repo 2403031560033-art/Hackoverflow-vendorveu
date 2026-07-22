@@ -177,4 +177,9 @@ export const getVendorRecommendations = (vendorId) => api.get(`/ai/vendor/${vend
 export const registerVendorBlockchain = (id) => api.post(`/web3/vendor/${id}/register`);
 export const getReceiptHash = (orderId) => api.get(`/web3/order/${orderId}/verify-receipt`);
 
+// Payment APIs
+export const createRazorpayOrder = (data) => api.post('/payment/create-order', data);
+export const verifyRazorpayPayment = (data) => api.post('/payment/verify-payment', data);
+export const getRazorpayKey = () => api.get('/payment/razorpay-key');
+
 export default api;

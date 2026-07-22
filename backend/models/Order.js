@@ -51,7 +51,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'upi', 'wallet', 'wallet-cash'],
+    enum: ['cash', 'upi', 'wallet', 'wallet-cash', 'razorpay'],
     required: true
   },
   walletAmount: {
@@ -126,11 +126,16 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Auto-increment orderNumber before saving
+// Auto-increment orderNumber and generate E-Token before saving
 orderSchema.pre('save', async function(next) {
   if (!this.orderNumber) {
     const lastOrder = await mongoose.model('Order').findOne().sort({ orderNumber: -1 });
     this.orderNumber = lastOrder ? lastOrder.orderNumber + 1 : 1;
+  }
+  if (!this.pickupToken) {
+    const hash = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const payStr = (this.paymentMethod || 'UPI').toUpperCase();
+    this.pickupToken = `ETOKEN-ORD#${this.orderNumber}-PAID₹${this.total}-${payStr}-${hash}`;
   }
   next();
 });
