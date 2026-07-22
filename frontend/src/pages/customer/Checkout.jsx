@@ -9,7 +9,7 @@ export default function Checkout() {
   const [total, setTotal] = useState(0);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentMethod, setPaymentMethod] = useState('upi');
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletAmount, setWalletAmount] = useState(0);
   const [cashAmount, setCashAmount] = useState(0);
@@ -107,12 +107,6 @@ export default function Checkout() {
       return;
     }
 
-    // Validate COD payment - requires minimum ₹100 wallet balance
-    if (paymentMethod === 'cash' && walletBalance < 100) {
-      alert('COD payment requires minimum ₹100 wallet balance. Please add money to wallet first.');
-      return;
-    }
-
     if (paymentMethod === 'wallet' && walletBalance < total) {
       alert('Insufficient wallet balance');
       return;
@@ -173,8 +167,16 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+          <button
+            type="button"
+            onClick={() => navigate('/customer/cart')}
+            className="text-orange-600 font-semibold hover:underline flex items-center gap-1"
+          >
+            ← Back
+          </button>
           <h1 className="text-xl font-bold text-gray-900">Checkout</h1>
+          <div className="w-12"></div>
         </div>
       </header>
 
@@ -317,59 +319,24 @@ export default function Checkout() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Payment Method</h2>
             <div className="space-y-3">
-              <label className={`flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 ${
-                walletBalance < 100 ? 'opacity-60 border-red-300' : ''
-              }`}>
+              <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input
                   type="radio"
                   name="payment"
-                  value="cash"
-                  checked={paymentMethod === 'cash'}
+                  value="upi"
+                  checked={paymentMethod === 'upi'}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  disabled={walletBalance < 100}
-                  className="mr-3"
+                  className="mr-3 text-orange-600 focus:ring-orange-500"
                 />
                 <div className="flex-1">
-                  <span className="font-medium text-gray-900">💵 Cash on Pickup</span>
-                  {walletBalance < 100 ? (
-                    <p className="text-sm text-red-600 font-medium">
-                      Requires minimum ₹100 wallet balance (Current: ₹{walletBalance.toFixed(2)})
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-600">₹{total.toFixed(2)}</p>
-                  )}
-                </div>
-              </label>
-              {walletBalance < 100 && (
-                <div className="ml-8 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    ⚠️ COD payment requires minimum ₹100 wallet balance. Please add money to your wallet first.
+                  <span className="font-medium text-gray-900">📲 Pay via UPI / QR Code</span>
+                  <p className="text-sm text-gray-600">
+                    {vendorQRCode || vendorUPIId 
+                      ? `Scan QR or use UPI ID to pay ₹${total.toFixed(2)}`
+                      : `Pay ₹${total.toFixed(2)} online via UPI`}
                   </p>
                 </div>
-              )}
-
-              {(vendorQRCode || vendorUPIId) && (
-                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="upi"
-                    checked={paymentMethod === 'upi'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1">
-                    <span className="font-medium text-gray-900">📲 Pay via UPI</span>
-                    <p className="text-sm text-gray-600">
-                      {vendorQRCode && vendorUPIId 
-                        ? `Scan QR or use UPI ID to pay ₹${total.toFixed(2)}`
-                        : vendorQRCode 
-                        ? `Scan QR to pay ₹${total.toFixed(2)}`
-                        : `Use UPI ID to pay ₹${total.toFixed(2)}`}
-                    </p>
-                  </div>
-                </label>
-              )}
+              </label>
               
               {walletBalance > 0 && (
                 <>
@@ -381,7 +348,7 @@ export default function Checkout() {
                       checked={paymentMethod === 'wallet'}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                       disabled={walletBalance < total}
-                      className="mr-3"
+                      className="mr-3 text-orange-600 focus:ring-orange-500"
                     />
                     <div className="flex-1">
                       <span className="font-medium text-gray-900">💰 Wallet Balance</span>
@@ -401,12 +368,12 @@ export default function Checkout() {
                         value="wallet-cash"
                         checked={paymentMethod === 'wallet-cash'}
                         onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="mr-3"
+                        className="mr-3 text-orange-600 focus:ring-orange-500"
                       />
                       <div className="flex-1">
-                        <span className="font-medium text-gray-900">💰 + 💵 Wallet + Cash</span>
+                        <span className="font-medium text-gray-900">💰 + 📲 Wallet + UPI</span>
                         <p className="text-sm text-gray-600">
-                          ₹{walletAmount.toFixed(2)} wallet + ₹{cashAmount.toFixed(2)} cash
+                          ₹{walletAmount.toFixed(2)} wallet + ₹{cashAmount.toFixed(2)} UPI
                         </p>
                       </div>
                     </label>
@@ -418,7 +385,7 @@ export default function Checkout() {
             {(paymentMethod === 'wallet-cash' || (paymentMethod === 'wallet' && walletBalance < total)) && (
               <div className="mt-4 p-3 bg-orange-50 rounded-lg">
                 <p className="text-sm text-orange-800">
-                  Paying ₹{walletAmount.toFixed(2)} from wallet + ₹{cashAmount.toFixed(2)} cash
+                  Paying ₹{walletAmount.toFixed(2)} from wallet + ₹{cashAmount.toFixed(2)} via UPI
                 </p>
               </div>
             )}
