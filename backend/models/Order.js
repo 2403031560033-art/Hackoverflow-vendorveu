@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 const orderItemSchema = new mongoose.Schema({
   menuItemId: {
@@ -66,14 +67,13 @@ const orderSchema = new mongoose.Schema({
   },
   otp: {
     type: String,
-    required: function() { return this.orderSource !== 'walkin'; },
-    match: /^[0-9]{4}$/,
+    required: function() { return this.orderSource !== 'walkin' && this.paymentStatus === 'paid'; },
     default: null
   },
   status: {
     type: String,
-    enum: ['pending', 'preparing', 'ready', 'completed', 'cancelled'],
-    default: 'pending'
+    enum: ['pending_payment', 'pending', 'preparing', 'ready', 'completed', 'cancelled', 'failed'],
+    default: function() { return this.orderSource === 'walkin' ? 'pending' : 'pending_payment'; }
   },
   estimatedTime: {
     type: Number,
@@ -121,6 +121,19 @@ const orderSchema = new mongoose.Schema({
   receiptHash: {
     type: String,
     default: null
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  transactionId: {
+    type: String,
+    default: null
+  },
+  razorpayOrderId: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
@@ -132,7 +145,7 @@ orderSchema.pre('save', async function(next) {
     const lastOrder = await mongoose.model('Order').findOne().sort({ orderNumber: -1 });
     this.orderNumber = lastOrder ? lastOrder.orderNumber + 1 : 1;
   }
-  if (!this.pickupToken) {
+  if (!this.pickupToken && this.paymentStatus === 'paid') {
     const hash = crypto.randomBytes(3).toString('hex').toUpperCase();
     const payStr = (this.paymentMethod || 'UPI').toUpperCase();
     this.pickupToken = `ETOKEN-ORD#${this.orderNumber}-PAID₹${this.total}-${payStr}-${hash}`;

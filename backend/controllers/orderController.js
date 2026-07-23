@@ -38,26 +38,12 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    // Generate 4-digit OTP (kept for backward compatibility)
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-
-    // Generate single-use pickup token
-    const pickupToken = crypto.randomUUID();
-
-    // Calculate estimated time from items
+    // Calculate estimated base prep time from items
     const estimatedTime = items.reduce((max, item) => {
       return Math.max(max, item.preparationTime || 10);
     }, 10);
 
-    // Calculate estimated pickup time based on shared queue
-    const activeOrders = await Order.countDocuments({
-      vendorId,
-      status: { $in: ['pending', 'preparing'] }
-    });
-    const totalQueueSize = activeOrders + (vendor.walkInCount || 0);
-    const avgPrepTime = vendor.avgPrepTimeMinutes || 10;
-    const estimatedMinutes = totalQueueSize * avgPrepTime;
-    const estimatedPickupTime = new Date(Date.now() + estimatedMinutes * 60000);
+    const isInstantPaid = paymentMethod === 'wallet' || paymentMethod === 'upi';
 
     const order = new Order({
       vendorId,
@@ -68,45 +54,42 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       walletAmount: walletAmount || 0,
       cashAmount: cashAmount || 0,
-      otp,
-      pickupToken,
       estimatedTime,
-      estimatedPickupTime,
       orderSource: 'online',
       notes: notes || '',
-      status: 'pending'
+      status: isInstantPaid ? 'pending' : 'pending_payment',
+      paymentStatus: isInstantPaid ? 'paid' : 'pending'
     });
+
+    if (isInstantPaid) {
+       order.otp = Math.floor(1000 + Math.random() * 9000).toString();
+       const activeOrders = await Order.countDocuments({ vendorId, status: { $in: ['pending', 'preparing'] } });
+       const totalQueueSize = activeOrders + (vendor.walkInCount || 0);
+       const avgPrepTime = vendor.avgPrepTimeMinutes || 10;
+       order.estimatedPickupTime = new Date(Date.now() + (totalQueueSize * avgPrepTime) * 60000);
+    }
 
     await order.save();
 
-    // Update vendor total orders
-    await Vendor.findByIdAndUpdate(vendorId, { $inc: { totalOrders: 1 } });
-
-    // Handle wallet payment deduction
-    if (paymentMethod === 'wallet' || paymentMethod === 'wallet-cash') {
-      const customer = await Customer.findOne({ phone: customerPhone });
-      if (customer) {
-        customer.walletBalance -= walletAmount;
-        customer.transactions.push({
-          type: 'debit',
-          amount: walletAmount,
-          orderId: order._id,
-          description: `Payment for Order #${order.orderNumber}`
-        });
-        await customer.save();
+    if (isInstantPaid) {
+      // Wallet deduction & Customer/Vendor updates
+      await Vendor.findByIdAndUpdate(vendorId, { $inc: { totalOrders: 1 } });
+      
+      let customer = await Customer.findOne({ phone: customerPhone });
+      if (!customer) {
+        customer = new Customer({ phone: customerPhone, name: customerName });
       }
-    }
-
-    // Create or update customer record
-    let customer = await Customer.findOne({ phone: customerPhone });
-    if (!customer) {
-      customer = new Customer({
-        phone: customerPhone,
-        name: customerName
+      
+      customer.walletBalance -= walletAmount;
+      customer.transactions.push({
+        type: 'debit',
+        amount: walletAmount,
+        orderId: order._id,
+        description: `Payment for Order #${order.orderNumber}`
       });
+      customer.totalOrders += 1;
+      await customer.save();
     }
-    customer.totalOrders += 1;
-    await customer.save();
 
     res.status(201).json({
       orderId: order._id,
@@ -157,7 +140,7 @@ export const getOrderByNumber = async (req, res) => {
 export const getVendorOrders = async (req, res) => {
   try {
     const { status } = req.query;
-    const query = { vendorId: req.params.vendorId, status: { $ne: 'completed' } };
+    const query = { vendorId: req.params.vendorId, status: { $nin: ['completed', 'pending_payment', 'failed'] } };
     
     if (status && status !== 'all') {
       query.status = status;

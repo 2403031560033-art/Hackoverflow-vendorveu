@@ -2,6 +2,7 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import Order from '../models/Order.js';
 import Customer from '../models/Customer.js';
+import Vendor from '../models/Vendor.js';
 
 let razorpay = null;
 if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
@@ -84,17 +85,39 @@ export const verifyPayment = async (req, res) => {
 
     let order = null;
     if (orderId) {
-      order = await Order.findByIdAndUpdate(
-        orderId,
-        {
-          paymentStatus: 'paid',
-          paymentMethod: 'razorpay',
-          razorpayPaymentId: razorpay_payment_id || `pay_${Date.now()}`,
-          razorpayOrderId: razorpay_order_id || `ord_${Date.now()}`,
-          paidAt: new Date()
-        },
-        { new: true }
-      );
+      order = await Order.findById(orderId);
+      if (order && order.paymentStatus !== 'paid') {
+        order.paymentStatus = 'paid';
+        order.status = 'pending';
+        order.transactionId = razorpay_payment_id || `pay_${Date.now()}`;
+        order.razorpayOrderId = razorpay_order_id || `ord_${Date.now()}`;
+        
+        order.otp = Math.floor(1000 + Math.random() * 9000).toString();
+        
+        const vendor = await Vendor.findById(order.vendorId);
+        const activeOrders = await Order.countDocuments({ vendorId: order.vendorId, status: { $in: ['pending', 'preparing'] } });
+        const totalQueueSize = activeOrders + (vendor?.walkInCount || 0);
+        const avgPrepTime = vendor?.avgPrepTimeMinutes || 10;
+        order.estimatedPickupTime = new Date(Date.now() + (totalQueueSize * avgPrepTime) * 60000);
+
+        await order.save();
+        
+        if (order.walletAmount > 0) {
+          const customer = await Customer.findOne({ phone: order.customerPhone });
+          if (customer) {
+            customer.walletBalance -= order.walletAmount;
+            customer.transactions.push({
+              type: 'debit',
+              amount: order.walletAmount,
+              orderId: order._id,
+              description: `Wallet Payment for Order #${order.orderNumber}`
+            });
+            await customer.save();
+          }
+        }
+        
+        await Vendor.findByIdAndUpdate(order.vendorId, { $inc: { totalOrders: 1 } });
+      }
     }
 
     if (customerId && order) {

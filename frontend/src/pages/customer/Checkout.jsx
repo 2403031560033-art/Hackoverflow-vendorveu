@@ -117,22 +117,21 @@ export default function Checkout() {
       return;
     }
 
-    if (paymentMethod === 'wallet' && walletBalance >= total) {
-      // Full wallet payment
-      await createAndPlaceOrder({ paymentMethod: 'wallet' });
+    // Step 1: Create the pending order in the backend
+    const pendingOrder = await createInitialOrder();
+    if (!pendingOrder) return;
+
+    if (pendingOrder.status === 'pending' || pendingOrder.paymentStatus === 'paid') {
+      // Wallet covered the full amount and order is finalized
+      handleSuccess(pendingOrder);
       return;
     }
 
-    // Trigger Razorpay Payment Gateway Flow
-    await handleRazorpayCheckout();
+    // Step 2: Trigger Razorpay
+    await handleRazorpayCheckout(pendingOrder.orderId);
   };
 
-  const handleRazorpayCheckout = async () => {
-    if (!customerName.trim() || !customerPhone.match(/^[0-9]{10}$/)) {
-      alert('Please enter valid name and 10-digit phone number');
-      return;
-    }
-
+  const handleRazorpayCheckout = async (orderId) => {
     setLoading(true);
     try {
       const scriptLoaded = await loadRazorpayScript();
@@ -141,23 +140,21 @@ export default function Checkout() {
       const res = await createRazorpayOrder({
         amount: payAmount,
         customerId: customerPhone,
-        receipt: `order_${Date.now()}`
+        receipt: `order_${Date.now()}`,
+        orderId
       });
 
       const { orderId: razorpayOrderId, key_id, isMock } = res.data;
 
       if (!scriptLoaded || isMock || !window.Razorpay) {
-        // Safe fallback simulation if Razorpay key is unconfigured or script blocked
-        await verifyRazorpayPayment({
+        const verifyRes = await verifyRazorpayPayment({
           razorpay_order_id: razorpayOrderId || `ord_mock_${Date.now()}`,
           razorpay_payment_id: `pay_mock_${Date.now()}`,
           razorpay_signature: `sig_mock_${Date.now()}`,
-          customerId: customerPhone
+          customerId: customerPhone,
+          orderId
         });
-        await createAndPlaceOrder({
-          paymentMethod: 'upi',
-          razorpayPaymentId: `pay_mock_${Date.now()}`
-        });
+        handleSuccess(verifyRes.data.order);
         return;
       }
 
@@ -174,16 +171,14 @@ export default function Checkout() {
         },
         handler: async (response) => {
           try {
-            await verifyRazorpayPayment({
+            const verifyRes = await verifyRazorpayPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              customerId: customerPhone
+              customerId: customerPhone,
+              orderId
             });
-            await createAndPlaceOrder({
-              paymentMethod: 'upi',
-              razorpayPaymentId: response.razorpay_payment_id
-            });
+            handleSuccess(verifyRes.data.order);
           } catch (err) {
             console.error('Payment verification error:', err);
             alert('Payment verification failed. Please try again.');
@@ -191,27 +186,22 @@ export default function Checkout() {
           }
         },
         modal: {
-          ondismiss: () => {
-            setLoading(false);
-          }
+          ondismiss: () => setLoading(false)
         },
-        theme: {
-          color: '#EA580C'
-        }
+        theme: { color: '#EA580C' }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (error) {
       console.error('Error initiating Razorpay:', error);
-      // Direct placement fallback if offline/mock
-      await createAndPlaceOrder({ paymentMethod: 'upi' });
+      alert('Could not initialize payment gateway. Please try again.');
+      setLoading(false);
     }
   };
 
-  const createAndPlaceOrder = async (extraData = {}) => {
+  const createInitialOrder = async (extraData = {}) => {
     setLoading(true);
-
     try {
       const orderData = {
         vendorId: cart[0].vendorId,
@@ -233,24 +223,30 @@ export default function Checkout() {
       };
 
       const response = await createOrder(orderData);
-      clearCart();
-      
-      const eToken = response.data.pickupToken || `ETOKEN-ORD#${response.data.orderNumber}`;
-      alert(`✅ Order #${response.data.orderNumber} placed successfully!\n\n🎟️ E-Token: ${eToken}\n🔑 OTP: ${response.data.otp}`);
-      navigate(`/order/${response.data.orderId}`);
+      return response.data;
     } catch (error) {
-      console.error('Error placing order:', error);
-      alert(error.response?.data?.error || 'Failed to place order. Please try again.');
-    } finally {
+      console.error('Error creating order:', error);
+      alert(error.response?.data?.error || 'Failed to initialize order.');
       setLoading(false);
+      return null;
     }
   };
 
-  const handleConfirmUPIPayment = () => {
+  const handleSuccess = (orderData) => {
+    clearCart();
+    const eToken = orderData.pickupToken || `ETOKEN-ORD#${orderData.orderNumber}`;
+    alert(`✅ Order #${orderData.orderNumber} placed successfully!\n\n🎟️ E-Token: ${eToken}\n🔑 OTP: ${orderData.otp}`);
+    navigate(`/order/${orderData.orderId || orderData._id}`);
+  };
+
+  const handleConfirmUPIPayment = async () => {
     if (!confirm('Have you completed the payment via Vendor UPI QR Code? Order will be placed.')) {
       return;
     }
-    createAndPlaceOrder({ paymentMethod: 'upi' });
+    const pendingOrder = await createInitialOrder({ paymentMethod: 'upi' });
+    if (pendingOrder) {
+      handleSuccess(pendingOrder);
+    }
   };
 
   return (
