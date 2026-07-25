@@ -343,7 +343,7 @@ export default function MenuManagement() {
                     <div className="w-12 h-12 rounded bg-gray-200 overflow-hidden flex-shrink-0">
                       {(imagePreviews[item._id] || (item.image && item.image !== '/images/menu-placeholder.jpg')) ? (
                         <img
-                          src={imagePreviews[item._id] || getImageUrl(item.image) || item.image}
+                          src={getImageUrl(imagePreviews[item._id] || item.image)}
                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
@@ -392,7 +392,7 @@ export default function MenuManagement() {
                 <div className="h-48 bg-gray-200 flex items-center justify-center relative group">
                   {(imagePreviews[item._id] || (item.image && item.image !== '/images/menu-placeholder.jpg')) ? (
                     <img
-                      src={imagePreviews[item._id] || getImageUrl(item.image) || item.image}
+                      src={getImageUrl(imagePreviews[item._id] || item.image)}
                       alt={item.name}
                       className="h-full w-full object-cover"
                     />
