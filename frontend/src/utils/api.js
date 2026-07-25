@@ -21,11 +21,18 @@ const adminApi = axios.create({
 // Helper function to get full image URL
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return null;
-  if (imagePath.startsWith('http')) return imagePath;
-  if (imagePath.startsWith('/uploads')) {
-    return `${BASE_URL}${imagePath}`;
+  // Normalize Windows backslashes to forward slashes
+  const normalizedPath = imagePath.replace(/\\/g, '/');
+  
+  if (normalizedPath.startsWith('http')) return normalizedPath;
+  
+  // Handle paths that start with /uploads or uploads/
+  if (normalizedPath.startsWith('/uploads') || normalizedPath.startsWith('uploads/')) {
+    const cleanPath = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+    return `${BASE_URL}${cleanPath}`;
   }
-  return imagePath;
+  
+  return normalizedPath;
 };
 
 // Vendor APIs
