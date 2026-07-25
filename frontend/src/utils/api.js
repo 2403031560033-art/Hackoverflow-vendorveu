@@ -60,7 +60,6 @@ export const updateOrderStatus = (id, status, estimatedTime) => {
   }
   return api.patch(`/orders/${id}/status`, body);
 };
-export const verifyOTP = (id, otp) => api.post(`/orders/${id}/verify`, { otp });
 export const submitRating = (id, rating, ratingComment) => api.post(`/orders/${id}/rating`, { rating, ratingComment });
 
 // Customer/Wallet APIs

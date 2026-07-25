@@ -65,10 +65,7 @@ const orderSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
-  otp: {
-    type: String,
-    default: null
-  },
+
   status: {
     type: String,
     enum: ['pending_payment', 'pending', 'preparing', 'ready', 'completed', 'cancelled', 'failed'],

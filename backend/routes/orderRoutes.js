@@ -6,7 +6,6 @@ import {
   getVendorOrders,
   getVendorStats,
   updateOrderStatus,
-  verifyOTP,
   verifyPickupToken,
   completePickup,
   createWalkInOrder,
@@ -21,7 +20,6 @@ router.get('/number/:orderNumber', getOrderByNumber);
 router.get('/vendor/:vendorId', getVendorOrders);
 router.get('/vendor/:vendorId/stats', getVendorStats);
 router.patch('/:id/status', updateOrderStatus);
-router.post('/:id/verify', verifyOTP);
 router.post('/verify-token', verifyPickupToken);
 router.post('/complete-pickup', completePickup);
 router.post('/walkin', createWalkInOrder);

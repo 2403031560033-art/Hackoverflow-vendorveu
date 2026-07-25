@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getVendorOrders, updateOrderStatus, verifyOTP, verifyPickupToken, completePickup } from '../../utils/api';
+import { getVendorOrders, updateOrderStatus, verifyPickupToken, completePickup } from '../../utils/api';
 
 export default function OrderManagement() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [otpInput, setOtpInput] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [showTimeModal, setShowTimeModal] = useState(false);
@@ -107,26 +107,6 @@ export default function OrderManagement() {
     setEstimatedTimeInput('');
   };
 
-  const handleVerifyOTP = async (orderId) => {
-    if (!otpInput || otpInput.length !== 4) {
-      alert('Please enter a valid 4-digit OTP');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await verifyOTP(orderId, otpInput);
-      await fetchOrders();
-      setSelectedOrder(null);
-      setOtpInput('');
-      alert('OTP verified successfully! Order completed.');
-    } catch (error) {
-      console.error('Error verifying OTP:', error);
-      alert(error.response?.data?.error || 'Invalid OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleVerifyToken = async (token) => {
     if (!token) {
@@ -283,27 +263,6 @@ export default function OrderManagement() {
                 ✅ Verify E-Token
               </button>
             </div>
-            {/* OTP Fallback (legacy) */}
-            <details className="border-t pt-2">
-              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">Manual OTP Verification (legacy)</summary>
-              <div className="flex gap-2 mt-2">
-                <input
-                  type="text"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="OTP"
-                  className="px-3 py-2 border border-gray-300 rounded-lg w-24 text-center text-lg font-mono"
-                  maxLength="4"
-                />
-                <button
-                  onClick={() => handleVerifyOTP(order._id)}
-                  disabled={loading || otpInput.length !== 4}
-                  className="bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-700 disabled:bg-gray-400 flex-1 text-sm"
-                >
-                  Verify OTP
-                </button>
-              </div>
-            </details>
           </div>
         );
       default:
@@ -391,10 +350,7 @@ export default function OrderManagement() {
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">OTP</p>
-                  <p className="text-2xl font-bold text-gray-900 font-mono">{order.otp}</p>
-                </div>
+
 
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Total Amount</p>

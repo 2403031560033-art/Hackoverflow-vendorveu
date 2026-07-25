@@ -1,6 +1,6 @@
 # VendorVue - Hyperlocal Vendor Discovery Platform
 
-VendorVue is a mobile-first web application that connects customers with nearby hyperlocal vendors through location-based discovery, digital menus, advance ordering, and OTP-based secure pickup.
+VendorVue is a mobile-first web application that connects customers with nearby hyperlocal vendors through location-based discovery, digital menus, advance ordering, and secure Virtual E-Token pickup.
 
 ## 🎯 Product Overview
 
@@ -11,7 +11,7 @@ VendorVue enables vendors to go digital in under 5 minutes with zero upfront cos
 - **Sequential Order Numbers**: Simple #1, #2, #3 system for easy order collection
 - **Distance Filter Slider**: Filter vendors by distance (0.5km - 5km)
 - **Integrated Wallet System**: Store balance, split payments (wallet + cash)
-- **OTP-Based Pickup**: 4-digit OTP system for secure order collection
+- **Virtual E-Token Pickup**: Cryptographically secure QR-based Virtual E-Token system for instant order collection
 - **Real-Time Status Updates**: Track orders from pending → preparing → ready → completed
 - **Click-to-Call**: Direct communication between customers and vendors
 - **Zero Commission Cash**: No fees on cash transactions
@@ -107,7 +107,7 @@ The frontend will run on `http://localhost:3000`
 - vendorId, customerName, customerPhone
 - items[], total, paymentMethod
 - walletAmount, cashAmount
-- otp (4-digit), status
+- pickupToken, pickupTokenUsed, status
 - estimatedTime, notes
 
 ### Customer/Wallet Collection
@@ -139,7 +139,8 @@ The frontend will run on `http://localhost:3000`
 - `GET /api/orders/vendor/:vendorId` - Get vendor orders
 - `GET /api/orders/vendor/:vendorId/stats` - Get vendor statistics
 - `PATCH /api/orders/:id/status` - Update order status
-- `POST /api/orders/:id/verify` - Verify OTP
+- `POST /api/orders/verify-token` - Verify Virtual E-Token
+- `POST /api/orders/complete-pickup` - Complete pickup using E-Token
 
 ### Customer/Wallet APIs
 - `GET /api/customers/:phone` - Get customer profile
@@ -156,14 +157,14 @@ The frontend will run on `http://localhost:3000`
 4. Add Items to Cart
 5. Checkout (enter details, choose payment)
 6. Order Status Tracking (real-time updates)
-7. Pickup with OTP verification
+7. Pickup with Virtual E-Token QR scan
 
 ### Vendor Flow
 1. Vendor Login/Register
 2. Dashboard (stats overview)
 3. Menu Management (add/edit items)
 4. Order Management (view & update status)
-5. Verify OTP when order is ready
+5. Scan Virtual E-Token QR when customer arrives
 
 ## 🎨 Features Implementation
 
@@ -184,13 +185,13 @@ The frontend will run on `http://localhost:3000`
 - Auto-incrementing sequential order numbers (#1, #2, #3...)
 - Status updates: pending → preparing → ready → completed
 - Audio alerts for new orders (vendor side)
-- OTP verification at pickup
+- Virtual E-Token QR scan at pickup
 - Real-time polling every 10 seconds
 
 ## 🔒 Security Features
 
 - Input validation and sanitization
-- OTP-based order verification
+- HMAC-signed secure Virtual E-Token verification
 - Phone number validation (10-digit)
 - CORS enabled for cross-origin requests
 - HTTPS recommended for production

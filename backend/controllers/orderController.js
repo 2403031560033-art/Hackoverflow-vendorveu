@@ -93,7 +93,6 @@ export const createOrder = async (req, res) => {
     res.status(201).json({
       orderId: order._id,
       orderNumber: order.orderNumber,
-      otp: order.otp,
       pickupToken: order.pickupToken,
       estimatedTime: order.estimatedTime,
       estimatedPickupTime: order.estimatedPickupTime,
@@ -215,32 +214,6 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     res.json(order);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const verifyOTP = async (req, res) => {
-  try {
-    const { otp } = req.body;
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    if (order.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP' });
-    }
-
-    if (order.status !== 'ready') {
-      return res.status(400).json({ error: 'Order is not ready for pickup' });
-    }
-
-    order.status = 'completed';
-    await order.save();
-
-    res.json({ message: 'OTP verified successfully', order });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -164,7 +164,7 @@ export default function OrderHistory() {
                   {order.status === 'ready' && (
                     <div className="mt-4 p-3 bg-green-50 rounded-lg">
                       <p className="text-sm text-green-800 font-medium">
-                        🎉 Your order is ready! OTP: {order.otp}
+                        🎉 Your order is ready for pickup! Show your E-Token to the vendor.
                       </p>
                       <Link
                         to={`/order/${order._id}`}
