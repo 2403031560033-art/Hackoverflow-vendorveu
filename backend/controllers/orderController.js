@@ -62,7 +62,6 @@ export const createOrder = async (req, res) => {
     });
 
     if (isInstantPaid) {
-       order.otp = Math.floor(1000 + Math.random() * 9000).toString();
        const activeOrders = await Order.countDocuments({ vendorId, status: { $in: ['pending', 'preparing'] } });
        const totalQueueSize = activeOrders + (vendor.walkInCount || 0);
        const avgPrepTime = vendor.avgPrepTimeMinutes || 10;
@@ -247,46 +246,154 @@ export const verifyOTP = async (req, res) => {
   }
 };
 
-// Verify single-use QR pickup token
+// Verify Virtual E-Token (HMAC-signed secure token)
 export const verifyPickupToken = async (req, res) => {
   try {
     const { token } = req.body;
 
     if (!token) {
-      return res.status(400).json({ error: 'Pickup token is required' });
+      return res.status(400).json({ error: 'Virtual E-Token is required' });
     }
 
-    const order = await Order.findOne({ pickupToken: token });
+    // Parse the signed token: orderId.timestamp.signature
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return res.status(400).json({ error: 'Invalid E-Token format' });
+    }
+
+    const [orderId, timestamp, signature] = parts;
+
+    // Fetch the order with vendor details
+    const order = await Order.findById(orderId)
+      .populate('vendorId', 'name phone location image verificationStatus blockchainId');
 
     if (!order) {
-      return res.status(404).json({ error: 'Invalid pickup token. Order not found.' });
+      return res.status(404).json({ error: 'Invalid E-Token. Order not found.' });
     }
 
+    // Verify HMAC signature
+    const secret = process.env.ETOKEN_SECRET || process.env.JWT_SECRET || 'vendorvue-etoken-secret-key';
+    const payload = `${orderId}:${order.orderNumber}:${timestamp}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      return res.status(400).json({ error: 'E-Token signature verification failed. This token may be tampered.' });
+    }
+
+    // Check if token has already been used
     if (order.pickupTokenUsed) {
-      return res.status(400).json({ error: 'This pickup token has already been used. Order was already collected.' });
+      return res.status(400).json({ error: 'This E-Token has already been used. Order was already collected.' });
+    }
+
+    // Check order status
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ error: 'This order has been cancelled.' });
+    }
+
+    if (order.paymentStatus === 'refunded') {
+      return res.status(400).json({ error: 'This order has been refunded.' });
+    }
+
+    if (order.paymentStatus === 'failed') {
+      return res.status(400).json({ error: 'Payment for this order failed.' });
     }
 
     if (order.status !== 'ready') {
-      return res.status(400).json({ error: `Order is not ready for pickup. Current status: ${order.status}` });
+      return res.status(400).json({
+        error: `Order is not ready for pickup. Current status: ${order.status}`,
+        currentStatus: order.status
+      });
     }
 
+    // Check expiry
     if (order.pickupTokenExpiresAt && new Date() > order.pickupTokenExpiresAt) {
-      return res.status(400).json({ error: 'Pickup token has expired. Please contact the vendor.' });
+      return res.status(400).json({ error: 'E-Token has expired. Please contact the vendor.' });
     }
 
-    // Mark token as used and complete the order
-    order.pickupTokenUsed = true;
-    order.status = 'completed';
-    await order.save();
-
+    // Token is valid — return full order details for vendor display
+    // Do NOT mark as completed yet. That happens on completePickup.
     res.json({
-      message: 'Pickup verified successfully! Order completed.',
+      success: true,
+      message: 'E-Token verified successfully',
       order: {
         _id: order._id,
         orderNumber: order.orderNumber,
         customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        items: order.items,
         total: order.total,
-        status: order.status
+        notes: order.notes,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+        estimatedTime: order.estimatedTime,
+        estimatedPickupTime: order.estimatedPickupTime,
+        createdAt: order.createdAt,
+        orderSource: order.orderSource,
+        vendorVerified: order.vendorId?.verificationStatus === 'verified'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Complete pickup — called when vendor clicks "Deliver Food"
+export const completePickup = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.status === 'completed') {
+      return res.status(400).json({ error: 'Order is already completed' });
+    }
+
+    if (order.pickupTokenUsed) {
+      return res.status(400).json({ error: 'Pickup already completed for this order' });
+    }
+
+    // Mark order as completed and invalidate token permanently
+    order.status = 'completed';
+    order.pickupTokenUsed = true;
+    await order.save();
+
+    // Auto-generate receipt hash (Web3 integrity)
+    if (!order.receiptHash) {
+      const receiptContent = JSON.stringify({
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        vendorId: order.vendorId,
+        items: order.items.map(i => ({ name: i.name, qty: i.quantity, price: i.price })),
+        total: order.total,
+        completedAt: new Date()
+      });
+      order.receiptHash = crypto
+        .createHash('sha256')
+        .update(receiptContent)
+        .digest('hex');
+      await order.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Pickup completed! Order delivered successfully.',
+      order: {
+        _id: order._id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        receiptHash: order.receiptHash
       }
     });
   } catch (error) {

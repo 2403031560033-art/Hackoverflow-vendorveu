@@ -168,6 +168,7 @@ export const createWalkInOrder = (data) => api.post('/orders/walkin', data);
 
 // QR Token Pickup API
 export const verifyPickupToken = (token) => api.post('/orders/verify-token', { token });
+export const completePickup = (orderId) => api.post('/orders/complete-pickup', { orderId });
 
 // AI Analytics APIs
 export const getVendorAnalytics = (vendorId) => api.get(`/ai/vendor/${vendorId}/analytics`);

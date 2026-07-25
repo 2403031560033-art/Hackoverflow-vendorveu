@@ -67,7 +67,6 @@ const orderSchema = new mongoose.Schema({
   },
   otp: {
     type: String,
-    required: function() { return this.orderSource !== 'walkin' && this.paymentStatus === 'paid'; },
     default: null
   },
   status: {
@@ -139,16 +138,23 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Auto-increment orderNumber and generate E-Token before saving
+// Auto-increment orderNumber and generate secure Virtual E-Token before saving
 orderSchema.pre('save', async function(next) {
   if (!this.orderNumber) {
     const lastOrder = await mongoose.model('Order').findOne().sort({ orderNumber: -1 });
     this.orderNumber = lastOrder ? lastOrder.orderNumber + 1 : 1;
   }
-  if (!this.pickupToken && this.paymentStatus === 'paid') {
-    const hash = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const payStr = (this.paymentMethod || 'UPI').toUpperCase();
-    this.pickupToken = `ETOKEN-ORD#${this.orderNumber}-PAID₹${this.total}-${payStr}-${hash}`;
+  // Generate HMAC-signed Virtual E-Token only after payment is verified
+  if (!this.pickupToken && this.paymentStatus === 'paid' && this.orderSource !== 'walkin') {
+    const secret = process.env.ETOKEN_SECRET || process.env.JWT_SECRET || 'vendorvue-etoken-secret-key';
+    const timestamp = Date.now();
+    const payload = `${this._id}:${this.orderNumber}:${timestamp}`;
+    const signature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+    // Store compact signed token: orderId.timestamp.signature
+    this.pickupToken = `${this._id}.${timestamp}.${signature}`;
   }
   next();
 });

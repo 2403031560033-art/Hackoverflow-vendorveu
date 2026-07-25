@@ -234,8 +234,7 @@ export default function Checkout() {
 
   const handleSuccess = (orderData) => {
     clearCart();
-    const eToken = orderData.pickupToken || `ETOKEN-ORD#${orderData.orderNumber}`;
-    alert(`✅ Order #${orderData.orderNumber} placed successfully!\n\n🎟️ E-Token: ${eToken}\n🔑 OTP: ${orderData.otp}`);
+    alert(`✅ Order #${orderData.orderNumber} placed successfully!\n\n🎟️ Your Virtual E-Token QR is ready.\nShow it to the vendor for instant pickup!`);
     navigate(`/order/${orderData.orderId || orderData._id}`);
   };
 

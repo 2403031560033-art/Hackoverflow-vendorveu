@@ -92,8 +92,6 @@ export const verifyPayment = async (req, res) => {
         order.transactionId = razorpay_payment_id || `pay_${Date.now()}`;
         order.razorpayOrderId = razorpay_order_id || `ord_${Date.now()}`;
         
-        order.otp = Math.floor(1000 + Math.random() * 9000).toString();
-        
         const vendor = await Vendor.findById(order.vendorId);
         const activeOrders = await Order.countDocuments({ vendorId: order.vendorId, status: { $in: ['pending', 'preparing'] } });
         const totalQueueSize = activeOrders + (vendor?.walkInCount || 0);

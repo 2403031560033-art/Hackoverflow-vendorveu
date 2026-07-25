@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getOrderById, submitRating } from '../../utils/api';
+import QRCode from 'qrcode';
 
 export default function OrderStatus() {
   const { id } = useParams();
@@ -10,6 +11,7 @@ export default function OrderStatus() {
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
 
   useEffect(() => {
     fetchOrder();
@@ -30,6 +32,21 @@ export default function OrderStatus() {
       setLoading(false);
     }
   };
+
+  // Generate QR code when order loads and has a pickupToken
+  useEffect(() => {
+    if (order?.pickupToken && !order.pickupTokenUsed && order.status !== 'completed') {
+      QRCode.toDataURL(order.pickupToken, {
+        width: 220,
+        margin: 2,
+        color: { dark: '#1a1a2e', light: '#ffffff' }
+      })
+        .then(url => setQrDataUrl(url))
+        .catch(err => console.error('QR generation error:', err));
+    } else {
+      setQrDataUrl(null);
+    }
+  }, [order]);
 
   const handleSubmitRating = async () => {
     if (rating < 1 || rating > 5) {
@@ -92,15 +109,15 @@ export default function OrderStatus() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* E-Token Digital Pass Card */}
+        {/* Virtual E-Token Digital Pass Card */}
         <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 rounded-2xl shadow-xl p-6 text-white mb-6 border-2 border-amber-300">
           <div className="flex justify-between items-center border-b border-orange-400/50 pb-3 mb-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🎟️</span>
-              <span className="font-bold text-sm tracking-wider uppercase">VendorVue Official E-Token</span>
+              <span className="font-bold text-sm tracking-wider uppercase">VendorVue Virtual E-Token</span>
             </div>
             <span className="bg-white text-orange-700 text-xs font-black px-3 py-1 rounded-full uppercase shadow">
-              {order.paymentStatus === 'paid' ? '✅ Paid & Verified' : 'Online Paid'}
+              {order.paymentStatus === 'paid' ? '✅ Paid & Verified' : 'Pending'}
             </span>
           </div>
 
@@ -109,10 +126,26 @@ export default function OrderStatus() {
             <p className="text-orange-100 text-xs tracking-wider uppercase mb-4">Digital Pickup Pass & Proof of Payment</p>
 
             <div className="bg-white rounded-xl p-5 max-w-md mx-auto shadow-inner text-gray-900 border border-gray-200">
-              <div className="text-xs text-gray-500 uppercase font-bold mb-2">E-Token ID</div>
-              <div className="font-mono text-sm font-bold text-orange-700 bg-orange-50 border border-orange-200 p-3 rounded-lg break-all select-all shadow-inner">
-                {order.pickupToken || `ETOKEN-ORD#${order.orderNumber}-PAID₹${order.total}`}
-              </div>
+              {/* QR Code Display */}
+              {qrDataUrl && order.status !== 'completed' && !order.pickupTokenUsed ? (
+                <div className="flex flex-col items-center">
+                  <div className="text-xs text-gray-500 uppercase font-bold mb-3">Scan to Verify & Pickup</div>
+                  <img src={qrDataUrl} alt="Virtual E-Token QR Code" className="w-48 h-48 rounded-lg shadow-md border-2 border-orange-200" />
+                  <p className="text-xs text-gray-400 mt-2">Show this QR to the vendor when order is ready</p>
+                </div>
+              ) : order.status === 'completed' || order.pickupTokenUsed ? (
+                <div className="flex flex-col items-center py-4">
+                  <span className="text-4xl mb-2">✅</span>
+                  <p className="font-bold text-green-700 text-lg">Order Collected</p>
+                  <p className="text-xs text-gray-500 mt-1">This E-Token has been used</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center py-4">
+                  <span className="text-4xl mb-2">⏳</span>
+                  <p className="font-bold text-amber-700">Awaiting Payment Verification</p>
+                  <p className="text-xs text-gray-500 mt-1">Your E-Token QR will appear here after payment is confirmed</p>
+                </div>
+              )}
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-left bg-gray-50 p-3 rounded-lg border text-xs">
                 <div>
@@ -124,8 +157,8 @@ export default function OrderStatus() {
                   <span className="font-bold text-green-700 capitalize text-sm">{order.paymentMethod || 'Razorpay / UPI'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block">Pickup OTP:</span>
-                  <span className="font-bold text-orange-600 font-mono text-sm">{order.otp}</span>
+                  <span className="text-gray-500 block">Status:</span>
+                  <span className="font-bold text-orange-600 capitalize text-sm">{order.status?.replace('_', ' ')}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 block">Items Count:</span>
@@ -133,20 +166,22 @@ export default function OrderStatus() {
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(order.pickupToken || `ETOKEN-ORD#${order.orderNumber}`);
-                  alert('E-Token copied to clipboard!');
-                }}
-                className="mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-4 rounded-lg w-full transition-colors flex items-center justify-center gap-2 text-sm shadow"
-              >
-                📋 Copy E-Token Details
-              </button>
+              {order.pickupToken && order.status !== 'completed' && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(order.pickupToken);
+                    alert('E-Token copied to clipboard!');
+                  }}
+                  className="mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-4 rounded-lg w-full transition-colors flex items-center justify-center gap-2 text-sm shadow"
+                >
+                  📋 Copy E-Token ID
+                </button>
+              )}
             </div>
           </div>
 
           <p className="text-center text-xs text-orange-100 mt-3">
-            Present this E-Token or OTP at counter for instant verification & order collection.
+            Show this QR code to the vendor for instant verification & order collection.
           </p>
         </div>
 
