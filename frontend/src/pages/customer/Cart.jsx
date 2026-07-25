@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getVendorById } from '../../utils/api';
+import { getVendorById, getImageUrl } from '../../utils/api';
 import {
   getCart,
   updateCartItemQuantity,
@@ -90,7 +90,7 @@ export default function Cart() {
             <div key={item.menuItemId} className="flex gap-4 pb-6 mb-6 border-b last:border-b-0">
               <div className="h-24 w-24 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
                 {item.image && item.image !== '/images/menu-placeholder.jpg' ? (
-                  <img src={item.image} alt={item.name} className="h-full w-full object-cover rounded-lg" />
+                  <img src={getImageUrl(item.image) || item.image} alt={item.name} className="h-full w-full object-cover rounded-lg" />
                 ) : (
                   <span className="text-gray-400 text-2xl">🍽️</span>
                 )}
