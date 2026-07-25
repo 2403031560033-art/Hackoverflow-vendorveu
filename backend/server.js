@@ -50,6 +50,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 app.use('/uploads', express.static(join(__dirname, 'uploads')));
 
+// Fallback for missing images in ephemeral storage to prevent Chrome ORB blocking
+app.use('/uploads', (req, res) => {
+  // 1x1 transparent GIF
+  const fallbackImg = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+  res.writeHead(404, {
+    'Content-Type': 'image/gif',
+    'Content-Length': fallbackImg.length
+  });
+  res.end(fallbackImg);
+});
 // Connect to MongoDB
 connectDB();
 
